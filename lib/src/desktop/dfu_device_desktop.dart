@@ -1,7 +1,12 @@
+import 'dart:convert';
 import 'dart:io';
+
 import '../dfu_device.dart';
+import '../dfu_progress_update.dart';
 
 class DfuDeviceDesktop extends DfuDevice {
+  static const _downloadSteps = 3;
+
   DfuDeviceDesktop(
     this._executable, {
     required int vendorId,
@@ -67,4 +72,125 @@ class DfuDeviceDesktop extends DfuDevice {
 
   @override
   String get serial => _serial;
+
+  @override
+  Future<void> download(
+    File file, {
+    bool useDfuse = false,
+    int dfuseAddress = 0x08000000,
+    bool dfuseLeave = false,
+    void Function(DfuProgressUpdate)? onProgress,
+  }) async {
+    if (!await file.exists()) {
+      throw Exception('File does not exist: ${file.path}');
+    }
+
+    final process = await Process.start(
+        _executable,
+        _buildDownloadArgs(
+          file,
+          useDfuse: useDfuse,
+          dfuseAddress: dfuseAddress,
+          dfuseLeave: dfuseLeave,
+        ));
+
+    var lastUpdate = DfuProgressUpdate(
+      step: 0,
+      stepName: 'Init',
+      stepMessage: 'Calling dfu-util...',
+      stepProgress: 0.0,
+      totalSteps: _downloadSteps,
+    );
+
+    // Listen to the stdout stream and parse progress updates
+    process.stdout
+        .transform(utf8.decoder)
+        .transform(const LineSplitter())
+        .listen(
+      (line) {
+        // Match progress lines
+        final match = RegExp(r'(\w+)\s+\[.*\]\s+(\d+)%').firstMatch(line);
+        if (match != null) {
+          final step = match.group(1) ?? '';
+          final progress = double.parse(match.group(2) ?? '-1.0');
+
+          if (step.contains('Erase')) {
+            lastUpdate = DfuProgressUpdate(
+              step: 1,
+              stepName: 'Erase',
+              stepMessage: line,
+              stepProgress: progress / 100,
+              totalSteps: _downloadSteps,
+            );
+          } else if (step.contains('Download')) {
+            lastUpdate = DfuProgressUpdate(
+              step: 2,
+              stepName: 'Download',
+              stepMessage: line,
+              stepProgress: progress / 100,
+              totalSteps: _downloadSteps,
+            );
+          }
+        } else {
+          lastUpdate = lastUpdate.copyWith(stepMessage: line);
+        }
+
+        onProgress?.call(lastUpdate);
+      },
+    );
+
+    final exitCode = await process.exitCode;
+
+    if (exitCode != 0) {
+      throw Exception('Failed to download firmware to device. '
+          'Error: ${process.stderr}');
+    }
+
+    if (!lastUpdate.stepMessage.contains('File downloaded successfully')) {
+      throw Exception('Failed to download firmware to device.');
+    }
+  }
+
+  List<String> _buildDownloadArgs(
+    File file, {
+    bool useDfuse = false,
+    int dfuseAddress = 0x08000000,
+    bool dfuseLeave = false,
+  }) {
+    final args = <String>[];
+
+    args.addAll([
+      '--device',
+      ',${_vendorId.toRadixString(16)}:${_productId.toRadixString(16)}',
+      '--cfg',
+      '$_configuration',
+      '--intf',
+      '$_interface',
+      '--alt',
+      '$_alternateSetting',
+    ]);
+
+    if (useDfuse) {
+      var addrString = '0x${dfuseAddress.toRadixString(16).padLeft(8, '0')}';
+      var modsString = '';
+
+      if (dfuseLeave) {
+        modsString += ':leave';
+      }
+
+      args.addAll(['--dfuse-address', '$addrString$modsString']);
+    }
+
+    args.addAll(['--download', file.path]);
+
+    return args;
+  }
+
+  @override
+  Future<void> upload(
+    File file, {
+    void Function(DfuProgressUpdate)? onProgress,
+  }) {
+    throw UnimplementedError();
+  }
 }

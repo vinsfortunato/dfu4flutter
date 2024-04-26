@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'dart:async';
 
@@ -30,10 +32,28 @@ class _MyAppState extends State<MyApp> {
     // Platform messages may fail, so we use a try/catch PlatformException.
     // We also handle the message potentially returning null.
     try {
-      final devices = await Dfu.getDevices();
-      for (final dev in devices) {
-        print(dev);
-      }
+      final device = await Dfu.getDevices().then(
+        (devices) => devices
+            .where(
+              (device) => device.alternateSetting == 0,
+            )
+            .first,
+      );
+
+      File firmwareFile =
+          File('C:\\Users\\vinsf\\Desktop\\sense8-firmware-0.0.1.bin');
+
+      await device.download(
+        firmwareFile,
+        useDfuse: true,
+        dfuseAddress: 0x08000000,
+        dfuseLeave: false,
+        onProgress: (progress) {
+          print(
+              '${progress.step}/${progress.totalSteps} ${progress.stepName}: ${(progress.stepProgress * 100).toInt()}%');
+        },
+      );
+
       platformVersion = '1';
     } on PlatformException {
       platformVersion = 'Failed to get platform version.';
