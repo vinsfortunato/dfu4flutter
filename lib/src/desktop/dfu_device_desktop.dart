@@ -5,8 +5,6 @@ import '../dfu_device.dart';
 import '../dfu_progress_update.dart';
 
 class DfuDeviceDesktop extends DfuDevice {
-  static const _downloadSteps = 3;
-
   DfuDeviceDesktop(
     this._executable, {
     required int vendorId,
@@ -82,24 +80,27 @@ class DfuDeviceDesktop extends DfuDevice {
     void Function(DfuProgressUpdate)? onProgress,
   }) async {
     if (!await file.exists()) {
-      throw Exception('File does not exist: ${file.path}');
+      throw FileSystemException('File does not exist: ${file.path}');
     }
 
     final process = await Process.start(
-        _executable,
-        _buildDownloadArgs(
-          file,
-          useDfuse: useDfuse,
-          dfuseAddress: dfuseAddress,
-          dfuseLeave: dfuseLeave,
-        ));
+      _executable,
+      _buildDownloadArgs(
+        file,
+        useDfuse: useDfuse,
+        dfuseAddress: dfuseAddress,
+        dfuseLeave: dfuseLeave,
+      ),
+    );
+
+    const totalSteps = 3;
 
     var lastUpdate = DfuProgressUpdate(
       step: 0,
       stepName: 'Init',
-      stepMessage: 'Calling dfu-util...',
-      stepProgress: 0.0,
-      totalSteps: _downloadSteps,
+      stepMessage: 'Starting dfu-util...',
+      stepProgress: -1.0,
+      totalSteps: totalSteps,
     );
 
     // Listen to the stdout stream and parse progress updates
@@ -120,7 +121,7 @@ class DfuDeviceDesktop extends DfuDevice {
               stepName: 'Erase',
               stepMessage: line,
               stepProgress: progress / 100,
-              totalSteps: _downloadSteps,
+              totalSteps: totalSteps,
             );
           } else if (step.contains('Download')) {
             lastUpdate = DfuProgressUpdate(
@@ -128,7 +129,7 @@ class DfuDeviceDesktop extends DfuDevice {
               stepName: 'Download',
               stepMessage: line,
               stepProgress: progress / 100,
-              totalSteps: _downloadSteps,
+              totalSteps: totalSteps,
             );
           }
         } else {

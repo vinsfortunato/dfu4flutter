@@ -1,5 +1,6 @@
-import 'package:dfu4flutter/dfu4flutter.dart';
 import 'package:plugin_platform_interface/plugin_platform_interface.dart';
+
+import 'dfu_device.dart';
 
 abstract class DfuPlatform extends PlatformInterface {
   DfuPlatform() : super(token: _token);

@@ -1,6 +1,6 @@
 import 'dart:io';
 
-import 'package:dfu4flutter/dfu4flutter.dart';
+import 'dfu_progress_update.dart';
 
 /// Represents a device that can be updated using the DFU protocol.
 abstract class DfuDevice {
