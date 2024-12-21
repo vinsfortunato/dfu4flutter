@@ -24,8 +24,6 @@ static void dfu4flutter_plugin_handle_method_call(
     FlMethodCall* method_call) {
   g_autoptr(FlMethodResponse) response = nullptr;
 
-  const gchar* method = fl_method_call_get_name(method_call);
-
   response = FL_METHOD_RESPONSE(fl_method_not_implemented_response_new());
 
   fl_method_call_respond(method_call, response, nullptr);

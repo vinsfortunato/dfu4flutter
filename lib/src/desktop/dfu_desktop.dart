@@ -21,7 +21,7 @@ class DfuMacos extends _DfuDesktop {
 }
 
 class DfuLinux extends _DfuDesktop {
-  DfuLinux() : super('dfu-util-static');
+  DfuLinux() : super('dfu-util');
 
   static registerWith() {
     DfuPlatform.instance = DfuLinux();
