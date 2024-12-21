@@ -1,6 +1,6 @@
 name: dfu4flutter
 description: "A wrapper around dfu-util for Flutter."
-version: 0.0.1
+version: 0.1.0
 homepage: https://github.com/vinsfortunato/dfu4flutter
 
 environment:
